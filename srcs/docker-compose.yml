@@ -1,0 +1,86 @@
+version: '3.5'
+volumes:
+  wp:
+    driver: local
+    name: wordpress
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/heveline/data/wp
+
+  db:
+    driver: local
+    name: db
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/heveline/data/db
+
+networks:
+  heveline_net:
+    name: heveline_net
+    driver: bridge
+
+services:
+  mariadb:
+    env_file: .env
+    volumes:
+      - db:/var/lib/mysql
+    restart: always
+    build: requirements/mariadb/
+    networks:
+      - heveline_net
+    container_name: heveline_mariadb
+
+  nginx:
+    volumes:
+      - wp:/var/www/html
+    depends_on:
+      - wordpress
+    ports:
+      - "443:443"
+    env_file: .env
+    restart: always
+    build: requirements/nginx/
+    networks:
+      - heveline_net
+    container_name: heveline_nginx
+
+  wordpress:
+    env_file: .env
+    depends_on:
+      - mariadb
+    volumes:
+      - wp:/var/www/html
+    restart: always
+    build: requirements/wordpress/
+    networks:
+      - heveline_net
+    container_name: heveline_wordpress
+ 
+  adminer:
+    env_file: .env
+    build: requirements/bonus/adminer
+    depends_on:
+      - wordpress
+      - mariadb
+    networks:
+      - heveline_net
+    ports:
+      - "7171:7171"
+    container_name: heveline_adminer
+    restart: always
+
+  redis:
+    env_file: .env
+    build: requirements/bonus/redis
+    depends_on:
+      - wordpress
+    ports:
+      - "6379:6379"
+    volumes:
+      - wp:/var/www/html
+    networks:
+      - heveline_net
+    container_name: heveline_redis
+    restart: always
